@@ -175,4 +175,5 @@ src/
 
 ## Team
 
-*[Names / roles here]*
+*Roaim khan / Memory Sytem*
+*Muhammad Ahmed Qasim / UI UX - Decay Formula*
