@@ -4,6 +4,54 @@ Built for **Qwen Cloud Global AI Hackathon — Track 1: MemoryAgent**
 
 ---
 
+## 🚀 Running the Demo
+
+> [!IMPORTANT]
+> The live demo runs as a Streamlit app. Follow these steps to get it up in under a minute.
+
+### 1. Clone & enter the repo
+```bash
+git clone <repo-url>
+cd Global-AI-Hackathon-main
+```
+
+### 2. Create and activate a virtual environment
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 3. Install dependencies
+```bash
+pip install -r requirements.txt
+pip install streamlit openai python-dotenv
+```
+
+### 4. Add your API key to `.env`
+```bash
+# .env (at project root)
+GOOGLE_API_KEY="your-gemini-api-key-here"
+```
+
+### 5. Launch the demo
+```bash
+streamlit run demo/app.py
+```
+
+Open **http://localhost:8501** in your browser.
+
+### 5-Step Demo Flow
+
+| Step | What to do | What to observe |
+|------|-----------|----------------|
+| **1** | Type: *"I'm researching Mem0's token efficiency, they achieve about 6.7K tokens per query"* | Right panel shows **🔍 Extracted** + **💾 Stored (serial 1)** |
+| **2** | Check the sidebar | `mem0_token_efficiency (serial 1)` visible under **All Stored Concepts** |
+| **3** | Click **🔄 Start New Session** | Chat clears, new session ID generated — SQLite untouched |
+| **4** | Ask: *"What was I researching about Mem0?"* | Agent recalls 6.7K from prior session; panel shows **🧠 Retrieved (Semantic — CAR Resolved)** |
+| **5** | Say: *"Actually the number is 8K not 6.7K"* then ask again | Panel shows **serial 2** stored; agent now answers 8K |
+
+---
+
 ## The Problem
 
 Every AI assistant today forgets you the moment the session ends. Ask it about a paper today, come back tomorrow, and you're re-explaining everything from scratch — what you've read, what you concluded, what contradicted what. For researchers juggling dozens of papers across weeks, this isn't a minor annoyance — it's the difference between an assistant that compounds your understanding over time and one that's permanently stuck at zero.
@@ -175,5 +223,7 @@ src/
 
 ## Team
 
-*Roaim khan / Memory Sytem*
-*Muhammad Ahmed Qasim / UI UX - Decay Formula*
+| Name | Role |
+|------|------|
+| Roaim Khan | Lead Developer — Memory Architecture & LangGraph Orchestration |
+| Muhammad Ahmed Qasim | AI Systems Engineer — Retrieval Pipeline, CAR Conflict Resolution & Evaluation |
