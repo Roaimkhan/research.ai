@@ -1,4 +1,4 @@
-# Reasearch.ai — A Research Assistant with Real Persistent Memory
+# Research.ai — A Research Assistant with Real Persistent Memory
 
 Built for **Qwen Cloud Global AI Hackathon — Track 1: MemoryAgent**
 
