@@ -123,6 +123,7 @@ class QwenClient:
 		self,
 		messages: Sequence[Any],
 		tools: list[dict[str, Any]] | None = None,
+
 		tool_choice: Any = "auto",
 		temperature: float = 0.3,
 		max_tokens: int = 1024,
