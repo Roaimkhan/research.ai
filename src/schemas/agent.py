@@ -2,8 +2,8 @@ from typing import Annotated, List
 from typing_extensions import TypedDict
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage
-from src.retrieval.schemas import SemanticMemories
+from src.schemas import ExtractionResult
 
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
-    samantic_mem:SemanticMemories
+    samantic_memories_raw:ExtractionResult

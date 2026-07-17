@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from src.extraction import ExtractSemantic
 from typing import List
 
 class MemoryItemRe(BaseModel):

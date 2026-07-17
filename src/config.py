@@ -7,6 +7,6 @@ load_dotenv(os.path.join(root_dir, '.env'))
 
 class Config:
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-    DB_URI = os.getenv("DB_URI", "postgresql://postgres:roaim123@localhost:5432/research_agent")
+    DB_URL = os.getenv("DB_URL")
 
 config = Config()

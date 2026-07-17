@@ -1,43 +1,59 @@
-# placeholder
-import uuid
-from typing import List
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.runnables import RunnableConfig
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.store.memory import BaseStore  
-from src.prompts.extraction_prompts import SEMANTIC_MEMORY_EXTRACTION_PROMPT
-from src.schemas.extraction_schemas import MemoryDecision
+from src.prompts.extraction_prompts import SYSTEM_EXTRACTION_PROMPT
+from psycopg2.errors import UndefinedTable
+from src.schemas import ExtractionResult ,MemoryBatch
+from src.schemas import AgentState 
 from src.config import config
+from typing import Literal
+import uuid
+from src.memory import conn
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=config.GOOGLE_API_KEY)
 
-def ExtractSemantic(state,store:BaseStore,config:RunnableConfig):
+def ExtractSemantic(state:AgentState) -> ExtractionResult:
     print("====ExtractSemantic Called==== ")
-    """
-        This function takes the user input to the agent: query, a store (to store the extracted facts),
-        and a 'RunnableConfig' (to store in the right place) for extracting and storing facts from the user data.
-        It handles deduplication!
-    """
+    cursor = conn.cursor()
+
+    cursor.execute("""
+            SELECT DISTINCT subject,predicate FROM active_beliefs
+        """)
+
+    result = cursor.fetchall()
+
+    subjects = list({i[0] for i in result})
+    predicates = list({i[1] for i in result})
+
     query = state["messages"][-1]
-    nm = config["configurable"]["namespace"]
-    existining_memories = store.search(nm)
-    memories_text = [it.value.get("memory","") for it in existining_memories if it.value.get("memory")]
+    structured_llm = llm.with_structured_output(ExtractionResult)
+    response : ExtractionResult= structured_llm.invoke(
+        [SystemMessage(content=SYSTEM_EXTRACTION_PROMPT.format(subjects=subjects,predicates=predicates)),
+         HumanMessage(content=f"Latest User Message :{query.content}")])
 
-    structured_llm = llm.with_structured_output(MemoryDecision)
-## Latest User Message
 
-    response : MemoryDecision = structured_llm.invoke(
-        [SystemMessage(content=SEMANTIC_MEMORY_EXTRACTION_PROMPT.format(user_details_content=memories_text,user_message=query.content)),
-         HumanMessage(content=f"Latest User Message :{query.content}" )]
-        )
+    return {"samantic_memories_raw" : response }
+
+
+def temporal_expression(state:AgentState):
+    memorieslist = state.get("samantic_memories_raw",[])
     
-    if response.should_write:
-        for mem in response.memmories:
-            print(f"DEBUG: Memory to write: {mem.text} (is_new={mem.is_new})")
-            if mem.is_new:
-                store.put(nm,str(uuid.uuid4()),{"memory":mem.text})
-    else:
-        print("DEBUG: LLM decided should_write=False")
+    if memorieslist:
+        for memory in memorieslist.memories:
+
+
+
+
+
+
+def RouterAfterSemanticEx(state:AgentState)->Literal["__end__","adjudication_gate"]:
+    memories = state.get("samantic_memories_raw")
+
+    if memories and memories.should_write:
+        return "adjudication_gate"
+    return "__end__"
+
+
+
 
 
 

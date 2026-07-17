@@ -1,3 +1,4 @@
 from .extraction_prompts import SEMANTIC_MEMORY_EXTRACTION_PROMPT
 from .retrieval_prompts import SEMANTIC_MEMORY_RETRIEVAL_PROMPT
 from .generation_prompts import FINAL_ANSWER_PROMPT
+from .adjudication_prompt import SYSTEM_ADJUDICATION_PROMPT

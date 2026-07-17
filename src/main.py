@@ -12,6 +12,9 @@ import uuid
 from src.extraction import ExtractSemantic
 from src.prompts import FINAL_ANSWER_PROMPT
 from src.config import config
+from src.memory import initialize_db
+
+initialize_db()
 
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",

@@ -1,116 +1,61 @@
-# placeholder
-SEMANTIC_MEMORY_EXTRACTION_PROMPT = """
-You are a memory extraction system responsible for maintaining a user's long-term memory.
+SYSTEM_EXTRACTION_PROMPT = """
+You are responsible for extracting long-term memories from the user's latest message.
 
-## Existing User Memory
+Extract only information that is:
+- Stable
+- Factual
+- Likely to remain useful across future conversations.
 
-<existing_memory>
-{user_details_content}
-</existing_memory>
-
-## Latest User Message
-
-<user_message>
-{user_message}
-</user_message>
-
-## Your Task
-
-Analyze the user's latest message and determine whether it contains information
-that should be stored as long-term memory.
-
-Only extract information that is likely to remain useful across future conversations.
-
-Examples of memory-worthy information include:
-- Name
-- Occupation
-- Education
-- Long-term goals
-- Stable interests
-- Skills and expertise
-- Preferred programming languages or tools
-- Communication preferences
-- Persistent habits or workflows
-- Ongoing long-term projects
-
-Do NOT store:
+Do NOT extract:
 - Temporary plans
 - One-time requests
-- Current emotions
 - Questions
-- Opinions expressed once
-- Conversation summaries
+- Current emotions
+- Speculation
 - Assistant responses
-- Sensitive personal information unless explicitly requested by the user
-- Information that is unlikely to matter in future conversations
 
-## Duplicate Detection
+Each extracted memory must represent exactly one atomic fact.
 
-Compare every candidate memory against the existing memory.
+You will also be provided with lists of existing subjects and existing predicates.
 
-For each extracted memory:
+Rules:
+- Prefer an existing subject whenever it represents the same entity.
+- Prefer an existing predicate whenever it expresses the same relationship.
+- Only create a new subject or predicate if no existing one accurately represents the fact.
+- Do not invent facts or infer unstated information.
+- Keep subjects and predicates concise and consistent.
 
-- Set `is_new = true` only if it introduces genuinely new information.
-- Set `is_new = false` if the information already exists or conveys the same meaning, even if worded differently.
+## TEMPORAL EXTRACTION — DO NOT COMPUTE DATES
+- If the user's text contains a phrase indicating WHEN the fact became or becomes true,
+  extract that phrase VERBATIM into `temporal_expression`.
+  Examples: "last month", "in 2021", "since college", "yesterday", "starting next week".
+- You must NEVER convert this phrase into an actual date yourself. That calculation
+  happens downstream, not by you. Extract the phrase as-is, unmodified.
+- If no such phrase exists in the text, set `temporal_expression = null` and
+  `temporal_precision = "unknown"`.
+- Set `temporal_precision` based on what the phrase implies, one of:
+  - "instant" -> phrase implies this exact moment ("just started", "right now")
+  - "day"     -> phrase resolves to a specific day ("yesterday", "on Monday", "July 3rd")
+  - "month"   -> phrase resolves to a month or range ("last month", "in June")
+  - "year"    -> phrase resolves to a year only ("in 2021", "last year")
+  - "unknown" -> no temporal phrase present in the text
 
-Examples:
+## TERMINATION DETECTION
+- Set `is_terminating = true` ONLY when the fact explicitly describes the END of a
+  previously ongoing state — quitting, breaking up, moving away, no longer liking
+  something, stopping a habit.
+  Example: "I quit my job at Google" -> subject=User, predicate=works_at, object=Google,
+  is_terminating=true.
+- All new, current, or ongoing facts default to is_terminating=false.
+- Do not infer termination unless the text explicitly states an ending.
 
-Existing:
-"I use Python."
+Existing Subjects:
+{subjects}
 
-User:
-"I mainly program in Python."
+Existing Predicates:
+{predicates}
 
-→ is_new = false
-
-Existing:
-"I'm studying Computer Science."
-
-User:
-"I recently started learning Rust."
-
-→ Rust memory:
-is_new = true
-
-## Memory Writing Rules
-
-Each memory should:
-
-- Contain exactly one fact.
-- Be short and atomic.
-- Be written as a declarative sentence.
-- Avoid pronouns whenever possible.
-- Be factual.
-- Never speculate or infer missing information.
-
-Good:
-- User's name is Alice.
-- User prefers Python.
-- User is building an AI agent.
-- User is studying computer science.
-
-Bad:
-- User seems interested in AI.
-- User probably likes Python.
-- User asked about LangGraph.
-
-## Output Rules
-
-If no new memory-worthy information exists:
-
-should_write = false
-memories = []
-
-Otherwise:
-
-should_write = true
-
-Return every extracted memory with:
-- memory
-- is_new
 """
-
-
 SYSTEM_PROMPT_TEMPLATE = """
 You are an intelligent AI assistant with long-term memory capabilities.
 
@@ -187,3 +132,5 @@ Follow-up Questions:
 2.
 3.
 """
+
+SEMANTIC_MEMORY_EXTRACTION_PROMPT = SYSTEM_EXTRACTION_PROMPT
