@@ -1,6 +1,6 @@
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-
+from src.schemas import WriterAgentState
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=config.GOOGLE_API_KEY)
 structured_llm = llm.with_structured_output(AdjudicatedMemoryItem)
 

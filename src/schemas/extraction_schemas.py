@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 from uuid import UUID
 import uuid
-
+from datetime import datetime
 from enum import Enum
 
 class TemporalPrecision(str, Enum):
@@ -23,22 +23,21 @@ class ExtractedMemory(BaseModel):
     object: str = Field(
         description="The value, entity, or concept associated with the subject through the predicate. Single atomic fact."
     )
-    temporal_expression: Optional[str] = Field(
+     temporal_start_expression: Optional[str] = Field(
         default=None,
-        description="The EXACT phrase from the user's text indicating when this fact became/becomes true. "
-                    "e.g. 'last month', 'in 2021', 'since college', 'yesterday'. "
-                    "Null if no temporal signal exists in the text."
+        description="Verbatim phrase indicating when the fact STARTED being true. Null if none."
     )
-    temporal_precision: TemporalPrecision = Field(
-        default=TemporalPrecision.UNKNOWN,
-        description="Granularity of the temporal_expression. UNKNOWN if temporal_expression is null."
+    temporal_end_expression: Optional[str] = Field(
+        default=None,
+        description="Verbatim phrase indicating when the fact ENDED, if stated in this same "
+                    "utterance (e.g. 'until 2022', 'through last year'). Null if not mentioned."
     )
-    is_terminating: bool = Field(
+    is_ongoing: bool = Field(
         default=False,
-        description="True if this statement means a PRIOR fact stopped being true "
-                    "(e.g., 'I quit Google', 'I no longer like cats', 'I moved out of NY')."
+        description="True if text explicitly signals the fact is still continuing "
+                    "(e.g. 'still', 'to this day')."
     )
-
+    
 class ExtractionResult(BaseModel):
     should_write:bool = Field(
         description = "True if memmories found, False if no memmories found"
@@ -50,8 +49,8 @@ class ExtractionResult(BaseModel):
 
 class MemoryRecord(ExtractedMemory):
     fact_id: UUID = Field(default_factory=uuid.uuid4)
-    valid_start:
-    valid_end:
+    valid_start: datetime
+    valid_end: datetime | Literal["ongoing"] | None = None
 
 
 class MemoryBatch(BaseModel):
