@@ -19,7 +19,8 @@ def semantic_buffer_writer(state: SemanticMemoryStagerState) -> dict:
                 cursor.execute(
                     """
                     INSERT INTO staging_buffer
-                        (user_id,
+                        (fact_id,
+                        user_id,
                         subject,
                         predicate,
                         object,
@@ -30,7 +31,8 @@ def semantic_buffer_writer(state: SemanticMemoryStagerState) -> dict:
                         conversation_id,
                         message_id)
                     VALUES
-                        (%(user_id)s,
+                        (%(fact_id)s,
+                        %(user_id)s,
                         %(subject)s,
                         %(predicate)s,
                         %(object)s,
@@ -42,6 +44,7 @@ def semantic_buffer_writer(state: SemanticMemoryStagerState) -> dict:
                         %(message_id)s)
                     """,
                     {
+                        "fact_id": str(memory.fact_id),
                         "user_id": str(user_id),
                         "subject": memory.subject,
                         "predicate": memory.predicate,

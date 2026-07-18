@@ -1,0 +1,86 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main
+plugins: anyio-4.14.2, langsmith-0.10.6
+collecting ... collected 1 item
+
+tests/test_semantic_buffer_consolidator_integration.py::TestSemanticBufferConsolidator::test_empty_staging_buffer_exits_cleanly ERROR [100%]
+
+==================================== ERRORS ====================================
+_ ERROR at setup of TestSemanticBufferConsolidator.test_empty_staging_buffer_exits_cleanly _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78b4ec535a00>
+
+    @pytest.fixture
+    def db_conn(monkeypatch):
+>       conn = psycopg.connect(config.DB_URL, autocommit=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/conftest.py:33: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'psycopg.Connection'>
+conninfo = 'user=postgres password=mysecretpassword dbname=researchai host=localhost port=5433 hostaddr=127.0.0.1'
+autocommit = False, prepare_threshold = 5, context = None, row_factory = None
+cursor_factory = None, kwargs = {}
+
+    @classmethod
+    def connect(
+        cls,
+        conninfo: str = "",
+        *,
+        autocommit: bool = False,
+        prepare_threshold: int | None = 5,
+        context: AdaptContext | None = None,
+        row_factory: RowFactory[Row] | None = None,
+        cursor_factory: type[Cursor[Row]] | None = None,
+        **kwargs: ConnParam,
+    ) -> Self:
+        """
+        Connect to a database server and return a new `Connection` instance.
+        """
+    
+        params = cls._get_connection_params(conninfo, **kwargs)
+        timeout = timeout_from_conninfo(params)
+        rv = None
+        attempts = conninfo_attempts(params)
+        conn_errors: list[tuple[e.Error, str]] = []
+        for attempt in attempts:
+            tdescr = (attempt.get("host"), attempt.get("port"), attempt.get("hostaddr"))
+            descr = "host: %r, port: %r, hostaddr: %r" % tdescr
+            logger.debug("connection attempt: %s", descr)
+            try:
+                conninfo = make_conninfo("", **attempt)
+                gen = cls._connect_gen(conninfo, timeout=timeout)
+                rv = waiting.wait_conn(gen, interval=_WAIT_INTERVAL)
+            except e.Error as ex:
+                logger.debug("connection failed: %s: %s", descr, str(ex))
+                conn_errors.append((ex, descr))
+            except e._NO_TRACEBACK as ex:
+                raise ex.with_traceback(None)
+            else:
+                logger.debug("connection succeeded: %s", descr)
+                break
+    
+        if not rv:
+            last_ex = conn_errors[-1][0]
+            if len(conn_errors) == 1:
+>               raise last_ex.with_traceback(None)
+E               psycopg.OperationalError: connection failed: connection to server at "127.0.0.1", port 5433 failed: Connection refused
+E               	Is the server running on that host and accepting TCP/IP connections?
+
+.venv/lib/python3.12/site-packages/psycopg/connection.py:122: OperationalError
+=============================== warnings summary ===============================
+tests/test_semantic_buffer_consolidator_integration.py:79
+  /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main/tests/test_semantic_buffer_consolidator_integration.py:79: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests/test_semantic_buffer_consolidator_integration.py::TestSemanticBufferConsolidator::test_empty_staging_buffer_exits_cleanly
+  /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main/tests/conftest.py:59: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    message_timestamp=datetime.datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/test_semantic_buffer_consolidator_integration.py::TestSemanticBufferConsolidator::test_empty_staging_buffer_exits_cleanly
+========================= 2 warnings, 1 error in 0.19s =========================

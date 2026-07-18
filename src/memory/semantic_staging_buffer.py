@@ -12,6 +12,7 @@ def initialize_db():
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS staging_buffer (
                     staging_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    fact_id UUID NOT NULL,
                     user_id UUID NOT NULL,
                     subject TEXT NOT NULL,
                     predicate TEXT NOT NULL,

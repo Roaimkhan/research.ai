@@ -7,7 +7,7 @@ conn = psycopg.connect(DB_URL)
 
 def initialize_db():
     conn.execute("""
-        CREATE EXTENSION IF NOT EXISTS vector
+        CREATE EXTENSION IF NOT EXISTS vector;
                  
         CREATE TABLE IF NOT EXISTS active_beliefs (
             fact_id UUID PRIMARY KEY,             

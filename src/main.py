@@ -29,8 +29,6 @@ async def SemanticMemoryStagerAdapter(state: AgentState) -> AgentState:
     message_timestamp: datetime
     latest_message: state["messages"][-1]
     
-
-
     bufferstate :SemanticMemoryStagerState = {
         "snapshot" : writer_state
     }
@@ -53,38 +51,3 @@ graph = StateGraph(AgentState)
 graph.add_node("writeSide",writeSide)
 
 
-
-# DB_URI = config.DB_URI
-
-# with MemoryPostgresSaver.from_conn_string(DB_URI) as checkpointer:
-#     checkpointer.setup()
-#     store = InMemoryStore()
-#     agent = graph.compile(
-#         checkpointer=checkpointer,
-#         store = store
-#     )
-    
-#     thread_id = str(uuid.uuid4())
-
-#     config = {
-#         "configurable": {
-#             "thread_id": thread_id,
-#             "namespace":"mmaa"
-#         }
-#     }
-
-#     user_input = input("Enter: ")
-#     while True:
-#         if user_input == "exit":
-#             break
-
-#         result = agent.invoke(
-#             {"messages": [HumanMessage(content=user_input)]},
-#             config=config
-#         )
-#         user_input = input("Enter: ")    
-
-# results = list(store.search(config["configurable"]["namespace"]))
-# print(f"Found {len(results)} memories")
-# for item in results:
-#     print(item)

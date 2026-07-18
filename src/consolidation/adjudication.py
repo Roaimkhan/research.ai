@@ -1,217 +1,124 @@
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-from src.schemas import AdjudicatedMemoryItem, SemanticBufferStage
 from src.config import config
 from src.prompts import SYSTEM_ADJUDICATION_PROMPT
-from src.schemas import AdjudicatedMemoryList, SemanticBufferStage, ExtractedMemory, MemoryBatch
+from src.schemas import AdjudicatedMemoryList, SemanticBufferConsolidatorState, MemoryRecord, MemoryBatch
 from src.memory import conn
-from src.consolidation import _insert_new_belief
-from src.consolidation import embed_text
+
+
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=config.GOOGLE_API_KEY)
 structured_llm = llm.with_structured_output(AdjudicatedMemoryList)
-cursor = conn.cursor()
 
 
+def _normalize_adjudication_response(response):
+    if response is None:
+        return []
+    if isinstance(response, AdjudicatedMemoryList):
+        return response.memories
+    if isinstance(response, list):
+        return response
+    if hasattr(response, "memories"):
+        return list(response.memories)
+    raise TypeError("Unexpected adjudication response type: %r" % type(response))
 
-def ajudication_gate(state:SemanticBufferStage):
 
-    user_id = state.snapshot.user_id
-    memories = state.samantic_memories_processed
-    adjudicated_memories :AdjudicatedMemoryList = AdjudicatedMemoryList() 
+def ajudication_gate(state: SemanticBufferConsolidatorState)->SemanticBufferConsolidatorState:
+    user_id = state["snapshot"].user_id
 
-    for memory in memories:
-        pred = memory.get("predicate")
-        sub = memory.get("subject")
+    adjudicated_memories = AdjudicatedMemoryList()
+    fresh_memories = MemoryBatch()
 
-        cursor.execute("""
-            SELECT * FROM staging_buffer
-            WHERE consolidated = FALSE;
-                       
-        """)
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT fact_id, subject, predicate, object,
+                   valid_start, valid_end, provenance_uri, confidence_score
+            FROM staging_buffer
+            WHERE consolidated = FALSE
+              AND user_id = %s;
+            """,
+            (user_id,),
+        )
+
         rows = cursor.fetchall()
-        length = len(rows)
-        batches = (length / 5) + 1
-        if rows:
-            colnames = [description[0] for description in cursor.description]
-            rows_as_dicts =  [dict(zip(colnames,row)) for row in rows]
-            BATCH_SIZE = 5
 
-            # Remove embeddings before sending to the LLM
-            for row in rows_as_dicts:
-                row.pop("fact_embedding", None)
+        if not rows:
+            return {
+                "adjudicated_memories": adjudicated_memories,
+                "fresh_memories": fresh_memories,
+            }
 
-            # Create batches
-            batches = [
-                rows_as_dicts[i:i + BATCH_SIZE]
-                for i in range(0, len(rows_as_dicts), BATCH_SIZE)
+        colnames = [desc[0] for desc in cursor.description]
+
+        staging_memories = [
+            MemoryRecord.parse_obj(dict(zip(colnames, row)))
+            for row in rows
+        ]
+
+        adjudication_candidates = []
+
+        for memory in staging_memories:
+            cursor.execute(
+                """
+                SELECT fact_id, object
+                FROM active_beliefs
+                WHERE predicate = %s
+                  AND subject = %s
+                  AND user_id = %s
+                  AND transaction_end IS NULL;
+                """,
+                (
+                    memory.predicate,
+                    memory.subject,
+                    user_id,
+                ),
+            )
+
+            similar_rows = cursor.fetchall()
+
+            if not similar_rows:
+                fresh_memories.memmories.append(memory)
+                continue
+
+            belief_columns = [desc[0] for desc in cursor.description]
+
+            similar_memories = [
+                dict(zip(belief_columns, row))
+                for row in similar_rows
             ]
-            # Process each batch
-            for batch in batches:
-                print(f"Processing batch of {len(batch)} rows")
-                # consolidation_graph.invoke(...)
-            
-            if rows_as_dicts:
-                response = structured_llm.invoke([SystemMessage(content=SYSTEM_ADJUDICATION_PROMPT),
-                            HumanMessage(content=f"""
-                                    Incoming Fact:{memory} 
-                                    Candidate Facts:{rows_as_dicts} """)])
-                adjudicated_memories.append(response)
 
-        else:
-            embedding = embed_text(f"{memory.subject} {memory.predicate} {memory.object}")
-            _insert_new_belief(memory, user_id, embedding)
-    
-        return {
-            "adjudicated_memories":adjudicated_memories,
-        }
+            adjudication_candidates.append(
+                {
+                    "new_memory": memory.model_dump(),
+                    "existing_memories": similar_memories,
+                }
+            )
 
+        BATCH_SIZE = 5
 
+        batches = [
+            adjudication_candidates[i:i + BATCH_SIZE]
+            for i in range(0, len(adjudication_candidates), BATCH_SIZE)
+        ]
 
+    for batch in batches:
+        response = structured_llm.invoke(
+                [
+                    SystemMessage(content=SYSTEM_ADJUDICATION_PROMPT),
+                    HumanMessage(
+                        content=f"""
+                        Adjudicate the following memory candidates.
+                        {batch}
+                        """
+                    ),
+                ]
+            )
 
+        adjudicated_memories.memories.extend(
+            _normalize_adjudication_response(response)
+        )
 
-
-
-
-
-
-
-
-
-# placeholder
-# import sqlite3
-# import sqlite_vec
-# import time
-# import numpy as np
-# from src.memory.utils import embed_text
-# conn = sqlite3.connect("database.db")
-# conn.enable_load_extension(True)
-# sqlite_vec.load(conn)
-
-# cursor = conn.cursor()
-
-
-# cursor.execute("""
-#     CREATE TABLE IF NOT EXISTS semantic_store (
-#     id INTEGER PRIMARY KEY,
-#     concept TEXT NOT NULL,
-#     fact_value TEXT NOT NULL,
-#     serial INTEGER NOT NULL,
-#     confidence REAL NOT NULL,
-#     source_type TEXT NOT NULL,
-#     timestamp INTEGER NOT NULL,
-#     session_id TEXT NOT NULL
-# )
-# """)
-
-
-# cursor.execute("""
-# CREATE VIRTUAL TABLE IF NOT EXISTS semantic_embeddings
-# USING vec0(
-#     embedding FLOAT[384]
-# )
-# """)
-
-# # 1. store_semantic_fact(concept, fact_value, confidence, source_type, session_id, embedding) -> 
-# #    queries MAX(serial) WHERE concept = X, inserts a new row with serial+1. Never updates or deletes existing rows. Returns the new row i
-
-
-# def store_semantic_fact(
-#         concept,
-#         fact_value,
-#         confidence,
-#         source_type,
-#         session_id,
-#         embedding
-#     ):
-
-#     timestamp = int(time.time())
-
-#     cursor.execute(f"SELECT MAX(serial) FROM semantic_store WHERE concept = ? ", (concept,))
-#     result = cursor.fetchone()
-#     max_serial = result[0] if result[0] is not None else 0 
-#     serial = max_serial+1
-
-#     cursor.execute(
-#         "INSERT INTO semantic_store (serial, concept, fact_value, confidence, source_type, session_id, timestamp) VALUES (?,?,?,?,?,?,?)", (serial,concept, fact_value, confidence, source_type, session_id,timestamp)
-#     )
-
-#     row_id = cursor.lastrowid
-#     cursor.execute(
-#         "INSERT INTO semantic_embeddings (rowid, embedding) VALUES (?,?)" , (row_id,np.array(embedding, dtype=np.float32).tobytes())
-#     )
-#     conn.commit()
-#     return row_id
-
-# def find_relevant_concepts(query_embedding, top_k=5) -> list[str]:
-
-#     embedding_bytes = np.array(query_embedding, dtype=np.float32).tobytes()
-#     cursor.execute(
-#         """SELECT s.concept
-#            FROM semantic_embeddings e
-#            JOIN semantic_store s ON e.rowid = s.rowid
-#            WHERE e.embedding MATCH ? AND k = ?
-#            ORDER BY e.distance
-#             """,
-#             (embedding_bytes,top_k)
-#     )
-#     concepts = cursor.fetchall()
-#     concepts = [i[0] for i in concepts]
-#     unique_concepts = list(dict.fromkeys(concepts))
-#     return unique_concepts
-    
-    
-
-
-# def car_resolve(concept: str)->dict|None:
-#     cursor.execute(
-#         """
-#         SELECT * FROM semantic_store
-#         WHERE concept = ? 
-#         """,
-#         (concept,)
-#     )
-#     rows = cursor.fetchall()
-#     if not rows:
-#         return None
-    
-#     colnames = [description[0] for description in cursor.description]
-#     rows_as_dicts =  [dict(zip(colnames,row)) for row in rows]
-#     latest_row = max(rows_as_dicts, key = lambda r: r["serial"] )
-
-#     return latest_row
-
-# def semantic_retrieve(query_text: str = None, query_embedding: list[float] = None) -> list[dict]:
-#     # Now BOTH are optional, so the function won't complain if you only pass one
-#     if query_text and not query_embedding:pic, got {results}")
-#         query_embedding = embed_text(query_text)
-        
-#     if query_embedding is None:
-#         raise ValueError("Either query_embedding or query_text must be provided.")
-    
-#     concepts = find_relevant_concepts(query_embedding)
-#     semantic_facts = []
-#     for con in concepts:
-#         semantic_facts.append(car_resolve(con))
-        
-#     return semantic_facts
-
-#     # --- END-TO-END INTEGRATION TEST ---
-# if __name__ == "__main__":
-#     print("Running end-to-end pipeline test...")
-#     # Reset
-#     cursor.execute("DELETE FROM semantic_store"); cursor.execute("DELETE FROM semantic_embeddings")
-    
-#     # Pipeline: Store 3 versions of the same concept
-#     concept = "user_employer"
-#     for val in ["Stripe", "OpenAI", "Anthropic"]:
-#         store_semantic_fact(concept, val, 1.0, "test", "sess1", embed_text(val))
-    
-#     # Pipeline: Retrieve via text query
-#     results = semantic_retrieve(query_text="Where do I work?")
-    
-#     # Verification
-#     latest = car_resolve(concept)
-#     if results and latest["fact_value"] == "Anthropic":
-#         print(f"SUCCESS: Pipeline retrieved '{results[0]['fact_value']}'. Latest is '{latest['fact_value']}' (Serial: {latest['serial']})")
-#     else:
-#         print(f"FAILED: Expected Anthropic, got {results}")
+    return {
+        "fresh_memories": fresh_memories,
+        "adjudicated_memories": adjudicated_memories,
+    }

@@ -1,2 +1,2 @@
 from .bitemporal_split import _insert_new_belief
-from .consolidator import embed_text 
+from .utils import embed_text

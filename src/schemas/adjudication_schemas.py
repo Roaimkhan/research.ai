@@ -25,7 +25,12 @@ class AdjudicatedMemoryItem(BaseModel):
         )
     )
 
+    adjudication_reason: str = Field(
+        default="",
+        description="A concise reason for the adjudication decision.",
+    )
+
 class AdjudicatedMemoryList(BaseModel):
-    memories: list[AdjudicatedMemoryItem] = Field(
+    memories: list[AdjudicatedMemoryItem] = Field(default_factory=list,
         description="A list of adjudicated memory items. Each item contains the incoming memory, the adjudication action, and any affected existing fact IDs."
     )

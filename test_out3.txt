@@ -1,0 +1,55 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main
+plugins: anyio-4.14.2, langsmith-0.10.6
+collecting ... collected 1 item
+
+tests/test_semantic_buffer_consolidator_integration.py::TestSemanticBufferConsolidator::test_empty_staging_buffer_exits_cleanly ERROR [100%]
+
+==================================== ERRORS ====================================
+_ ERROR at setup of TestSemanticBufferConsolidator.test_empty_staging_buffer_exits_cleanly _
+
+obj = <function semantic_buffer_writer at 0x73e18f3ff240>, name = 'conn'
+ann = 'src.writeside.semantic_buffer_writer'
+
+    def annotated_getattr(obj: object, name: str, ann: str) -> object:
+        try:
+>           obj = getattr(obj, name)
+                  ^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'function' object has no attribute 'conn'
+
+.venv/lib/python3.12/site-packages/_pytest/monkeypatch.py:95: AttributeError
+
+The above exception was the direct cause of the following exception:
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73e18f21d7f0>
+
+    @pytest.fixture
+    def db_conn(monkeypatch):
+        conn = psycopg.connect(config.DB_URL, autocommit=False)
+        # Prevent node-level commits from breaking transactional rollback.
+        def noop_commit():
+            return None
+    
+        monkeypatch.setattr(conn, "commit", noop_commit)
+        monkeypatch.setattr(src_memory, "conn", conn)
+        monkeypatch.setattr(adjudication, "conn", conn)
+        monkeypatch.setattr(bitemporal_split, "conn", conn)
+>       monkeypatch.setattr("src.writeside.semantic_buffer_writer.conn", conn)
+E       AttributeError: 'function' object at src.writeside.semantic_buffer_writer has no attribute 'conn'
+
+tests/conftest.py:42: AttributeError
+=============================== warnings summary ===============================
+tests/test_semantic_buffer_consolidator_integration.py:79
+  /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main/tests/test_semantic_buffer_consolidator_integration.py:79: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests/test_semantic_buffer_consolidator_integration.py::TestSemanticBufferConsolidator::test_empty_staging_buffer_exits_cleanly
+  /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main/tests/conftest.py:59: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    message_timestamp=datetime.datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/test_semantic_buffer_consolidator_integration.py::TestSemanticBufferConsolidator::test_empty_staging_buffer_exits_cleanly
+========================= 2 warnings, 1 error in 0.21s =========================

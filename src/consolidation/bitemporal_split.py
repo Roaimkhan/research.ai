@@ -1,52 +1,67 @@
-from src.memory import conn 
+from src.memory import conn
 from src.schemas import SemanticBufferConsolidatorState, MemoryRecord
-from src.consolidation import embed_text
-cursor = conn.cursor()
+from src.consolidation.utils import embed_text
+
+JUDGE_MODEL = "gemini-2.5-pro"
 
 
+def consolidate_fresh_memories(state: SemanticBufferConsolidatorState):
+    snapshot = state.get("snapshot")
+    if snapshot is None:
+        raise ValueError("SemanticBufferConsolidatorState missing required 'snapshot' field.")
 
-JUDGE_MODEL = "gemini-2.5-pro"  
+    fresh_memories = state.get("fresh_memories")
+    if fresh_memories is None or not fresh_memories.memmories:
+        return state
 
-
-def bitemporal_split(state: SemanticBufferConsolidatorState):
-    memories_list = state.adjudicated_memories
-    user_id = state.snapshot.user_id
-
-    for item in memories_list.memories:
-        action = item.action
-        record = item.memory
-
-        if action == "IGNORE":
-            continue
-
-        embedding = embed_text(f"{record.subject} {record.predicate} {record.object}")
-
-        if action == "ADD":
-            _insert_new_belief(record, user_id, embedding)
-
-        elif action == "REPLACE":
-            for old_fact_id in item.target_fact_ids:
-                _retract_and_audit(
-                    fact_id=old_fact_id,
-                    reason=item.adjudication_reason or "Superseded by newer fact.",
-                )
-            _insert_new_belief(record, user_id, embedding)
-
-        elif action == "CONTRADICT":
-            for old_fact_id in item.target_fact_ids:
-                _retract_and_audit(
-                    fact_id=old_fact_id,
-                    reason=item.adjudication_reason or "Contradicted by conflicting fact.",
-                )
-            _insert_new_belief(record, user_id, embedding)
-
-        else:
-            raise ValueError(f"Unknown adjudication action: {action}")
+    user_id = snapshot.user_id
+    with conn.cursor() as cursor:
+        for memory in fresh_memories.memmories:
+            embedding = embed_text(f"{memory.subject} {memory.predicate} {memory.object}")
+            _insert_new_belief(cursor, memory, user_id, embedding)
+        conn.commit()
 
     return state
 
 
-def _insert_new_belief(record: MemoryRecord, user_id: str, embedding: list[float]):
+def bitemporal_split(state: SemanticBufferConsolidatorState):
+    snapshot = state.get("snapshot")
+    if snapshot is None:
+        raise ValueError("SemanticBufferConsolidatorState missing required 'snapshot' field.")
+
+    memories_list = state.get("adjudicated_memories")
+    if memories_list is None or not memories_list.memories:
+        return state
+
+    user_id = snapshot.user_id
+
+    with conn.cursor() as cursor:
+        for item in memories_list.memories:
+            action = item.action
+            record = item.memory
+
+            if action == "IGNORE":
+                continue
+
+            embedding = embed_text(f"{record.subject} {record.predicate} {record.object}")
+
+            if action == "ADD":
+                _insert_new_belief(cursor, record, user_id, embedding)
+
+            elif action in {"REPLACE", "CONTRADICT"}:
+                for old_fact_id in item.target_fact_ids:
+                    _retract_and_audit(cursor, fact_id=old_fact_id,
+                                        reason=item.adjudication_reason or "Superseded by newer fact.")
+                _insert_new_belief(cursor, record, user_id, embedding)
+
+            else:
+                raise ValueError(f"Unknown adjudication action: {action}")
+        conn.commit()
+
+    return state
+
+
+def _insert_new_belief(cursor, record: MemoryRecord, user_id: str, embedding: list[float]):
     cursor.execute(
         """
         INSERT INTO active_beliefs
@@ -73,7 +88,7 @@ def _insert_new_belief(record: MemoryRecord, user_id: str, embedding: list[float
     )
 
 
-def _retract_and_audit(fact_id: str, reason: str):
+def _retract_and_audit(cursor, fact_id: str, reason: str):
     """
     Closes transaction-time on the losing fact and moves it atomically
     into belief_audit_trail with a signed judge verdict.
@@ -82,7 +97,6 @@ def _retract_and_audit(fact_id: str, reason: str):
     """
     cursor.execute("BEGIN")
     try:
-        # 1. Close transaction-time on the active row
         cursor.execute(
             """
             UPDATE active_beliefs
@@ -95,14 +109,11 @@ def _retract_and_audit(fact_id: str, reason: str):
         row = cursor.fetchone()
 
         if row is None:
-            # Nothing active to retract — already closed or doesn't exist.
-            # Don't silently continue; this indicates a race or bad fact_id.
             cursor.execute("ROLLBACK")
             raise ValueError(f"No active belief found for fact_id={fact_id}")
 
         user_id, subject, predicate, object_, transaction_start = row
 
-        # 2. Write the audit record — this is the permanent verdict log
         cursor.execute(
             """
             INSERT INTO belief_audit_trail

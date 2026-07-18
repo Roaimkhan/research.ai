@@ -1,25 +1,21 @@
-# placeholder
-from langgraph.graph import StateGraph ,END, START
-from src.schemas import SemanticBufferConsolidator
-from src.writeside import ajudication_gate, bitemporal_split, semantic_buffer_writer
+from langgraph.graph import StateGraph, END, START
+from src.schemas import SemanticBufferConsolidatorState
+from src.consolidation.adjudication import ajudication_gate
+from src.consolidation.bitemporal_split import bitemporal_split, consolidate_fresh_memories
 
+writer_graph = StateGraph(SemanticBufferConsolidatorState)
 
+writer_graph.add_node("AG", ajudication_gate)
+writer_graph.add_node("FM", consolidate_fresh_memories)
+writer_graph.add_node("BS", bitemporal_split)
 
-writer_graph = StateGraph(SemanticBufferConsolidator)
+writer_graph.add_edge(START, "AG")
+writer_graph.add_edge("AG", "FM")
+writer_graph.add_edge("FM", "BS")
+writer_graph.add_edge("BS", END)
 
-writer_graph.add_node("AG",ajudication_gate)
-writer_graph.add_node("BS",bitemporal_split)
-writer_graph.add_node("SBW",semantic_buffer_writer)
+SemanticBufferConsolidator = writer_graph.compile()
 
-writer_graph.add_edge(START,"AG")
-writer_graph.add_edge("AG","BS")
-writer_graph.add_edge("BS","SBW")
-writer_graph.add_edge("SBW",END)
-
-SemanticBufferConsilidator = writer_graph.compile()
-
-from IPython.display import Image, display
-display(Image(app.writer_graph().draw_mermaid_png()))
 
 
 

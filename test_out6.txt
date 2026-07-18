@@ -1,0 +1,68 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main
+plugins: anyio-4.14.2, langsmith-0.10.6
+collecting ... collected 1 item
+
+tests/test_semantic_buffer_consolidator_integration.py::TestSemanticBufferConsolidator::test_empty_staging_buffer_exits_cleanly FAILED [100%]
+
+=================================== FAILURES ===================================
+____ TestSemanticBufferConsolidator.test_empty_staging_buffer_exits_cleanly ____
+
+self = <test_semantic_buffer_consolidator_integration.TestSemanticBufferConsolidator object at 0x7ce04f020140>
+pipeline_graph = <langgraph.graph.state.CompiledStateGraph object at 0x7ce04f1fbe90>
+base_state = {'snapshot': SemanticMemoryStagerSnapShot(run_id=UUID('a2c09c6a-efb0-4e5c-be06-4584f6f05ca3'), user_id='490334ce-7e44-...memmories=[]), 'fresh_memories': MemoryBatch(memmories=[]), 'adjudicated_memories': AdjudicatedMemoryList(memories=[])}
+db_conn = <psycopg.Connection [IDLE] (host=localhost port=5433 user=postgres database=researchai) at 0x7ce04f0214f0>
+
+    def test_empty_staging_buffer_exits_cleanly(self, pipeline_graph, base_state, db_conn):
+        state = base_state.copy()
+    
+>       result = pipeline_graph.invoke(state)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_semantic_buffer_consolidator_integration.py:84: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/langgraph/pregel/main.py:3913: in invoke
+    for chunk in self.stream(
+.venv/lib/python3.12/site-packages/langgraph/pregel/main.py:2967: in stream
+    for _ in runner.tick(
+.venv/lib/python3.12/site-packages/langgraph/pregel/_runner.py:207: in tick
+    run_with_retry(
+.venv/lib/python3.12/site-packages/langgraph/pregel/_retry.py:617: in run_with_retry
+    return task.proc.invoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:684: in invoke
+    input = context.run(step.invoke, input, config, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/langgraph/_internal/_runnable.py:426: in invoke
+    ret = self.func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+state = {'snapshot': SemanticMemoryStagerSnapShot(run_id=UUID('a2c09c6a-efb0-4e5c-be06-4584f6f05ca3'), user_id='490334ce-7e44-...memmories=[]), 'fresh_memories': MemoryBatch(memmories=[]), 'adjudicated_memories': AdjudicatedMemoryList(memories=[])}
+
+    def ajudication_gate(state: SemanticBufferConsolidatorState):
+>       user_id = state.snapshot.user_id
+                  ^^^^^^^^^^^^^^
+E       AttributeError: 'dict' object has no attribute 'snapshot'
+E       During task with name 'AG' and id '0e22fc4f-1189-dc5d-25d3-d4cd1315e52b'
+
+src/consolidation/adjudication.py:26: AttributeError
+=============================== warnings summary ===============================
+tests/test_semantic_buffer_consolidator_integration.py:79
+  /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main/tests/test_semantic_buffer_consolidator_integration.py:79: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.integration
+
+tests/test_semantic_buffer_consolidator_integration.py::TestSemanticBufferConsolidator::test_empty_staging_buffer_exits_cleanly
+  /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main/tests/conftest.py:61: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    message_timestamp=datetime.datetime.utcnow(),
+
+tests/test_semantic_buffer_consolidator_integration.py::TestSemanticBufferConsolidator::test_empty_staging_buffer_exits_cleanly
+  /home/roaim/Desktop/qwen hackathon/Global-AI-Hackathon-main/.venv/lib/python3.12/site-packages/psycopg_pool/pool.py:134: DeprecationWarning: the default for the ConnectionPool 'open' parameter will become 'False' in a future release. Please use open={True|False} explicitly, or use the pool as context manager using: `with ConnectionPool(...) as pool: ...`
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_semantic_buffer_consolidator_integration.py::TestSemanticBufferConsolidator::test_empty_staging_buffer_exits_cleanly
+======================== 1 failed, 3 warnings in 0.46s =========================
