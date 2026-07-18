@@ -1,9 +1,9 @@
 from pydantic import BaseModel, Field
-from src.schemas import MemoryItemEx
+from .extraction_schemas import MemoryRecord
 from typing import Literal
 
 class AdjudicatedMemoryItem(BaseModel):
-    memory: MemoryItemEx
+    memory: MemoryRecord
 
     action: Literal["ADD", "REPLACE", "IGNORE", "CONTRADICT"] = Field(
         description=(

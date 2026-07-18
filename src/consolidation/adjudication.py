@@ -1,85 +1,69 @@
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-from src.schemas import WriterAgentState
+from src.schemas import AdjudicatedMemoryItem, SemanticBufferStage
+from src.config import config
+from src.prompts import SYSTEM_ADJUDICATION_PROMPT
+from src.schemas import AdjudicatedMemoryList, SemanticBufferStage, ExtractedMemory, MemoryBatch
+from src.memory import conn
+from src.consolidation import _insert_new_belief
+from src.consolidation import embed_text
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=config.GOOGLE_API_KEY)
-structured_llm = llm.with_structured_output(AdjudicatedMemoryItem)
+structured_llm = llm.with_structured_output(AdjudicatedMemoryList)
+cursor = conn.cursor()
 
-def ajudication_gate(state:WriterAgentState):
+
+
+def ajudication_gate(state:SemanticBufferStage):
 
     user_id = state.snapshot.user_id
-    memories = state.snapshot.raw_semantic_memories
-
-    adjudicated_memories :list[AdjudicatedMemoryItem] = []
-    simple_memories:list[MemoryItemEx] = []
+    memories = state.samantic_memories_processed
+    adjudicated_memories :AdjudicatedMemoryList = AdjudicatedMemoryList() 
 
     for memory in memories:
         pred = memory.get("predicate")
         sub = memory.get("subject")
 
         cursor.execute("""
-            SELECT * FROM active_beliefs
-            WHERE user_id = %s AND subject = %s AND predicate = %s
+            SELECT * FROM staging_buffer
+            WHERE consolidated = FALSE;
                        
-        """, (user_id,sub,pred))
+        """)
         rows = cursor.fetchall()
-
+        length = len(rows)
+        batches = (length / 5) + 1
         if rows:
             colnames = [description[0] for description in cursor.description]
             rows_as_dicts =  [dict(zip(colnames,row)) for row in rows]
+            BATCH_SIZE = 5
+
+            # Remove embeddings before sending to the LLM
             for row in rows_as_dicts:
-                row.pop("fact_embedding",None)
-                
+                row.pop("fact_embedding", None)
+
+            # Create batches
+            batches = [
+                rows_as_dicts[i:i + BATCH_SIZE]
+                for i in range(0, len(rows_as_dicts), BATCH_SIZE)
+            ]
+            # Process each batch
+            for batch in batches:
+                print(f"Processing batch of {len(batch)} rows")
+                # consolidation_graph.invoke(...)
+            
             if rows_as_dicts:
                 response = structured_llm.invoke([SystemMessage(content=SYSTEM_ADJUDICATION_PROMPT),
                             HumanMessage(content=f"""
                                     Incoming Fact:{memory} 
                                     Candidate Facts:{rows_as_dicts} """)])
-                
                 adjudicated_memories.append(response)
 
-
         else:
-            simple_memories.append(memory)
-            
+            embedding = embed_text(f"{memory.subject} {memory.predicate} {memory.object}")
+            _insert_new_belief(memory, user_id, embedding)
+    
         return {
             "adjudicated_memories":adjudicated_memories,
-            "semantic_memories_processed":simple_memories
         }
-
-def bitemporal_split(state:WriterAgentState):
-    memories = state.adjudicated_memories
-
-    for memory in memories:
-        action = memory.get("action","")
-        if not action:
-            return "mamita"
-        subject = memory.subject
-        object = memory.object
-        user_id = state.snapshot.user_id
-        predicate = predicate.subject
-        if action == "ADD":
-            cursor.execute("""
-                    INSERT TO active_beliefs
-                    (fact_id,user_id,subject,predicate,object,valid_start,valid_end,transaction_start,transaction_end,provenance_uri,confidence_score,fact_embedding)
-                    VALUES ('') 
-                           """)
-
-
-    
-    
-    # structured_llm = llm.with_structured_output(response)
-    # response : Memmorieslisted = structured_llm.invoke(
-    #     [SystemMessage(content=SYSTEM_EXTRACTION_PROMPT),
-    #      HumanMessage(content=f"Latest User Message :{query.content}" )]
-    #     )
-    
-
-
-
-
-
-
-
 
 
 

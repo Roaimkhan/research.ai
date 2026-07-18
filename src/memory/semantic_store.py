@@ -1,8 +1,4 @@
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
 from src.config import config
-from src.prompts import SYSTEM_ADJUDICATION_PROMPT
-from src.schemas import AdjudicatedMemoryItem, WriterAgentState, MemoryItemEx
 import psycopg
 
 DB_URL = config.DB_URL
@@ -28,7 +24,7 @@ def initialize_db():
             fact_embedding vector(1536)
         );
 
-        CREATE TABLE IF NOT EXISTS belief_audit (
+        CREATE TABLE IF NOT EXISTS belief_audit_trail (
             user_id UUID NOT NULL,
             audit_id SERIAL PRIMARY KEY,
             fact_id UUID NOT NULL,

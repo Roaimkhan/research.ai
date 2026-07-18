@@ -4,7 +4,7 @@ from langgraph.store.memory import BaseStore
 from langchain_google_genai import ChatGoogleGenerativeAI
 from src.schemas.retrieval_schemas import MemoriesRe
 from src.prompts.retrieval_prompts import SEMANTIC_MEMORY_RETRIEVAL_PROMPT
-from src.agents.agent import AgentState
+from src.sub_graphs.agent import AgentState
 from src.config import config
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=config.GOOGLE_API_KEY)
