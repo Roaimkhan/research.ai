@@ -1,8 +1,10 @@
 from src.memory import conn
 from src.schemas import SemanticBufferConsolidatorState, MemoryRecord
-from src.consolidation.utils import embed_text
+from src.consolidation import embed_text
+from src.clients.config import settings
 
-JUDGE_MODEL = "gemini-2.5-pro"
+
+JUDGE_MODEL = getattr(settings, "QWEN_MODEL", "qwen")
 
 
 def consolidate_fresh_memories(state: SemanticBufferConsolidatorState):

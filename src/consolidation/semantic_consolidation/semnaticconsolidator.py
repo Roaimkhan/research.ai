@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph, END, START
 from src.schemas import SemanticBufferConsolidatorState
-from src.consolidation.adjudication import ajudication_gate
-from src.consolidation.bitemporal_split import bitemporal_split, consolidate_fresh_memories
+from src.consolidation.semantic_consolidation.adjudication import ajudication_gate
+from src.consolidation.semantic_consolidation.bitemporal_split import bitemporal_split, consolidate_fresh_memories
 
 writer_graph = StateGraph(SemanticBufferConsolidatorState)
 

@@ -6,6 +6,8 @@ import re
 import sys
 import uuid
 
+from src.consolidation.semantic_consolidation import adjudication
+
 # Ensure repository root is on sys.path so `src` package imports work during tests
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -38,7 +40,7 @@ from src.schemas import (
     AdjudicatedMemoryItem,
     AdjudicatedMemoryList,
 )
-from src.consolidation import adjudication, bitemporal_split
+from src.consolidation.semantic_consolidation import bitemporal_split
 
 import src.memory as src_memory
 

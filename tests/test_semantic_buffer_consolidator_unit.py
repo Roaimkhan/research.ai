@@ -3,8 +3,9 @@ import uuid
 
 import pytest
 
+from src.consolidation.semantic_consolidation import adjudication
 from src.schemas import MemoryRecord, AdjudicatedMemoryItem, AdjudicatedMemoryList, SemanticBufferConsolidatorState, MemoryBatch
-from src.consolidation import adjudication, bitemporal_split
+from src.consolidation.semantic_consolidation import bitemporal_split
 
 
 class DummyCursor:

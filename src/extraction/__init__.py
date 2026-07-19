@@ -1,2 +1,2 @@
-from .extractor import extract_semantic, router_after_semantic_ex
+from .unified_extractor import UnifiedExtractor
 from .temporal_expression_resolver import temporal_expression_resolver

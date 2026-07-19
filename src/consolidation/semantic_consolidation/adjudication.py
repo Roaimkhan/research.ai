@@ -1,13 +1,9 @@
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
-from src.config import config
+from typing import Sequence, Mapping
+
+from src.clients.qwen_client import qwen_client
 from src.prompts import SYSTEM_ADJUDICATION_PROMPT
 from src.schemas import AdjudicatedMemoryList, SemanticBufferConsolidatorState, MemoryRecord, MemoryBatch
 from src.memory import conn
-
-
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key=config.GOOGLE_API_KEY)
-structured_llm = llm.with_structured_output(AdjudicatedMemoryList)
 
 
 def _normalize_adjudication_response(response):
@@ -102,21 +98,18 @@ def ajudication_gate(state: SemanticBufferConsolidatorState)->SemanticBufferCons
         ]
 
     for batch in batches:
-        response = structured_llm.invoke(
-                [
-                    SystemMessage(content=SYSTEM_ADJUDICATION_PROMPT),
-                    HumanMessage(
-                        content=f"""
-                        Adjudicate the following memory candidates.
-                        {batch}
-                        """
-                    ),
-                ]
-            )
+        messages: list[Mapping[str, str]] = [
+            {"role": "system", "content": SYSTEM_ADJUDICATION_PROMPT},
+            {"role": "user", "content": f"Adjudicate the following memory candidates.\n{batch}"},
+        ]
 
-        adjudicated_memories.memories.extend(
-            _normalize_adjudication_response(response)
-        )
+        structured_llm = qwen_client.with_structured_output(AdjudicatedMemoryList)
+        try:
+            response = structured_llm.invoke(messages)
+        except Exception:
+            response = None
+
+        adjudicated_memories.memories.extend(_normalize_adjudication_response(response))
 
     return {
         "fresh_memories": fresh_memories,
