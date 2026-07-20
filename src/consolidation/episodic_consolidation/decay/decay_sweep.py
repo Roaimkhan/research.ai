@@ -1,9 +1,9 @@
-import logging
+from src.logging import get_logger, record_memory_event
 
-from src.memory.semantic_store import conn
+from src.persistence.semantic_store import conn
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def run_decay_sweep() -> None:
@@ -30,6 +30,7 @@ WHERE is_active = TRUE
 """)
                 deactivated_count = cursor.rowcount
 
+        record_memory_event(episodic_updated=updated_count, items_processed=deactivated_count)
         logger.info(
             "Decay sweep completed.\n"
             f"Updated scores: {updated_count}\n"
@@ -37,3 +38,4 @@ WHERE is_active = TRUE
         )
     except Exception:
         logger.exception("Decay sweep failed.")
+        record_memory_event(scheduler_errors=1)

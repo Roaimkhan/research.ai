@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from typing import List
 
 from src.consolidation.episodic_consolidation.state import ConsolidationState
-from src.memory import episodic_store
-from src.memory.semantic_store import conn
+from src.persistence import episodic_store
+from src.persistence.semantic_store import conn
 
 
 SIMILARITY_THRESHOLD = 0.80

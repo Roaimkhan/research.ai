@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import threading
 import time
 from dataclasses import dataclass
@@ -13,8 +12,9 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 from src.clients.config import settings
 from src.telemetry import track_call
+from src.logging import get_logger, record_llm_call
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _FAILURE_WINDOW_SECONDS = 30
 _OPEN_SECONDS = 15
@@ -296,18 +296,23 @@ class QwenClient:
         except Exception:
             pass
 
+        record_llm_call(
+            duration_ms=telemetry.latency_ms,
+            prompt_tokens=telemetry.prompt_tokens,
+            completion_tokens=telemetry.completion_tokens,
+            total_tokens=(telemetry.prompt_tokens or 0) + (telemetry.completion_tokens or 0),
+        )
         logger.info(
-            json.dumps(
-                {
-                    'model': telemetry.model,
-                    'latency_ms': telemetry.latency_ms,
-                    'prompt_tokens': telemetry.prompt_tokens,
-                    'completion_tokens': telemetry.completion_tokens,
-                    'had_tool_call': telemetry.had_tool_call,
-                },
-                separators=(',', ':'),
-                ensure_ascii=False,
-            )
+            "LLM request completed",
+            extra={
+                'provider': 'qwen',
+                'model': telemetry.model,
+                'latency_ms': telemetry.latency_ms,
+                'prompt_tokens': telemetry.prompt_tokens,
+                'completion_tokens': telemetry.completion_tokens,
+                'total_tokens': (telemetry.prompt_tokens or 0) + (telemetry.completion_tokens or 0),
+                'had_tool_call': telemetry.had_tool_call,
+            },
         )
 
     def _normalize_messages(self, messages: Sequence[Any]) -> list[dict[str, Any]]:

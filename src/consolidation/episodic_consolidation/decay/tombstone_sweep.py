@@ -1,9 +1,9 @@
-import logging
+from src.logging import get_logger, record_memory_event
 
-from src.memory.semantic_store import conn
+from src.persistence.semantic_store import conn
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def run_tombstone_sweep() -> None:
@@ -21,9 +21,11 @@ WHERE erasure_tombstone = FALSE
 """)
                 tombstoned_count = cursor.rowcount
 
+        record_memory_event(tombstones=tombstoned_count)
         logger.info(
             "Tombstone sweep completed.\n"
             f"Tombstoned: {tombstoned_count}"
         )
     except Exception:
         logger.exception("Tombstone sweep failed.")
+        record_memory_event(scheduler_errors=1)

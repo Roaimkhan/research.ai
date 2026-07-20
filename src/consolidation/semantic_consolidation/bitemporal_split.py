@@ -1,6 +1,6 @@
-from src.memory import conn
+from src.persistence.semantic_store import conn
 from src.schemas import SemanticBufferConsolidatorState, MemoryRecord
-from src.consolidation import embed_text
+from src.utils import embed_text
 from src.clients.config import settings
 
 

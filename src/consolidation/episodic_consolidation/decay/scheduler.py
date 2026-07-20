@@ -1,11 +1,13 @@
 import logging
 import time
+from uuid import uuid4
 
+from src.logging import ensure_run_context, bind_run_context, record_memory_event, get_logger
 from .decay_sweep import run_decay_sweep
 from .tombstone_sweep import run_tombstone_sweep
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DECAY_INTERVAL_HOURS = 6
 DECAY_INTERVAL_SECONDS = DECAY_INTERVAL_HOURS * 60 * 60
@@ -18,17 +20,21 @@ def run_decay_scheduler() -> None:
     )
 
     while True:
-        logger.info("Starting decay maintenance cycle.")
+        scheduler_run_id = str(uuid4())
+        logger.info("Starting decay maintenance cycle.", extra={"run_id": scheduler_run_id})
 
-        try:
-            run_decay_sweep()
-        except Exception:
-            logger.exception("Decay sweep failed in scheduler.")
+        with bind_run_context(run_id=scheduler_run_id):
+            try:
+                run_decay_sweep()
+            except Exception:
+                logger.exception("Decay sweep failed in scheduler.")
+                record_memory_event(scheduler_errors=1)
 
-        try:
-            run_tombstone_sweep()
-        except Exception:
-            logger.exception("Tombstone sweep failed in scheduler.")
+            try:
+                run_tombstone_sweep()
+            except Exception:
+                logger.exception("Tombstone sweep failed in scheduler.")
+                record_memory_event(scheduler_errors=1)
 
         logger.info(
             "Decay maintenance cycle complete. Sleeping for %s hours.",

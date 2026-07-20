@@ -1,0 +1,9 @@
+{"timestamp":1784538790.6471722,"call_type":"qwen.call_qwen_structured","latency_ms":13475,"prompt_tokens":2323,"completion_tokens":537,"success":true,"error_type":null}
+{"timestamp":1784538823.439444,"call_type":"qwen.call_qwen_structured","latency_ms":14260,"prompt_tokens":2323,"completion_tokens":623,"success":true,"error_type":null}
+{"timestamp":1784538867.0521746,"call_type":"qwen.call_qwen_structured","latency_ms":22360,"prompt_tokens":2323,"completion_tokens":1032,"success":true,"error_type":null}
+{"timestamp":1784538903.7707055,"call_type":"qwen.call_qwen_structured","latency_ms":19932,"prompt_tokens":2323,"completion_tokens":975,"success":true,"error_type":null}
+{"timestamp":1784538970.7583053,"call_type":"qwen.call_qwen_structured","latency_ms":28460,"prompt_tokens":2323,"completion_tokens":1409,"success":true,"error_type":null}
+{"timestamp":1784540292.3656461,"call_type":"qwen.call_qwen_structured","latency_ms":21139,"prompt_tokens":2323,"completion_tokens":1002,"success":true,"error_type":null}
+{"timestamp":1784540313.5261927,"call_type":"qwen.call_qwen","latency_ms":8013,"prompt_tokens":351,"completion_tokens":380,"success":true,"error_type":null}
+{"timestamp":1784540984.811956,"call_type":"qwen.call_qwen_structured","latency_ms":19953,"prompt_tokens":2323,"completion_tokens":932,"success":true,"error_type":null}
+{"timestamp":1784541004.7821567,"call_type":"qwen.call_qwen","latency_ms":8267,"prompt_tokens":14,"completion_tokens":387,"success":true,"error_type":null}

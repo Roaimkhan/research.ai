@@ -3,7 +3,7 @@ from typing import Sequence, Mapping
 from src.clients.qwen_client import qwen_client
 from src.prompts import SYSTEM_ADJUDICATION_PROMPT
 from src.schemas import AdjudicatedMemoryList, SemanticBufferConsolidatorState, MemoryRecord, MemoryBatch
-from src.memory import conn
+from src.persistence import conn
 
 
 def _normalize_adjudication_response(response):

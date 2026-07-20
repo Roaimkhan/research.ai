@@ -1,2 +1,2 @@
-from .unified_extractor import UnifiedExtractor
+from .unified_extractor import UnifiedExtractor, extraction_router
 from .temporal_expression_resolver import temporal_expression_resolver

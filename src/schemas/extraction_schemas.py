@@ -8,7 +8,7 @@ from datetime import datetime
 class ExtractedMemory(BaseModel):
     fact_id: UUID = Field(
         default_factory=uuid.uuid4,
-        description="Unique identifier for this extracted fact."
+        description="Unique identifier for this extracted fact.its already generated"
     )
     subject: str = Field(
         description="The primary entity the memory is about (e.g., User, Paper_A, Drug_X)."

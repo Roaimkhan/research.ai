@@ -2,3 +2,4 @@ langgraph
 pydantic
 langchain_google_genai
 dotenv
+rank_bm25

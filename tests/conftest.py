@@ -42,7 +42,7 @@ from src.schemas import (
 )
 from src.consolidation.semantic_consolidation import bitemporal_split
 
-import src.memory as src_memory
+import src.persistence as src_memory
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -62,7 +62,7 @@ def db_conn(monkeypatch):
 
     monkeypatch.setattr(conn, "commit", noop_commit)
 
-    import src.memory as src_memory
+    import src.persistence as src_memory
     monkeypatch.setattr(src_memory, "conn", conn)
     monkeypatch.setattr(adjudication, "conn", conn)
     monkeypatch.setattr(bitemporal_split, "conn", conn)

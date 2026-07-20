@@ -1,10 +1,12 @@
-from typing import Annotated, List
+from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage
-from src.schemas import UnifiedExtraction ,RequestContext
+from .unifiedextractionschemas import UnifiedExtraction 
+from .requestcontext_schema import RequestContext
 
-class AgentState(TypedDict):
-    RequestContext:RequestContext
-    unified_extraction:UnifiedExtraction
-    messages: Annotated[List[BaseMessage], add_messages]
+class AgentState(TypedDict, total=False):
+    requestcontext: RequestContext
+    messages: Annotated[list[BaseMessage], add_messages]
+    unified_extraction: UnifiedExtraction
+    retrieved_context: list[dict]

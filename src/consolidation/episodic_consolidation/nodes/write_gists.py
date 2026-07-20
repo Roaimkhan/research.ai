@@ -1,7 +1,7 @@
 from episodic_consolidation.state import ConsolidationState
 
-from src.memory import episodic_store
-from src.memory.semantic_store import conn
+from src.persistence import episodic_store
+from src.persistence.semantic_store import conn
 
 
 def write_gist_node(state: ConsolidationState) -> ConsolidationState:

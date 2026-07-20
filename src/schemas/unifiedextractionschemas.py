@@ -1,4 +1,5 @@
-from src.schemas import ExtractionResult,EpisodicMarkers
+from .extraction_schemas import ExtractionResult
+from .EpisodicMarker_schemas import EpisodicMarkers
 from pydantic import BaseModel
 
 class UnifiedExtraction(BaseModel):

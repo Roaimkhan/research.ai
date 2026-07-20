@@ -1,48 +1,80 @@
-from typing import Sequence, Mapping
-
 from src.clients.qwen_client import qwen_client
 from src.schemas import AgentState, UnifiedExtraction
-from src.memory import pool
+from src.persistence import pool
 from src.prompts import UNIFIED_EXTRACTION_PROMPT
 
 
 def UnifiedExtractor(state:AgentState) -> AgentState:
-    # User's DB query to fetch existing subjects/predicates
-    user_id = state.get("context").user_id
-    query = state.get("messages")[-1]
+    context = state.get("requestcontext")
+    if context is None:
+        raise ValueError("AgentState missing requestcontext.")
+
+    user_id = context.user_id
+
+    messages = state.get("messages", [])
+    if not messages:
+        raise ValueError("AgentState missing messages.")
+
+    latest_message = messages[-1]
+
     with pool.connection() as conn:
-        with conn.cursor() as cursor: 
-            cursor.execute("""
-                    SELECT DISTINCT subject, predicate FROM active_beliefs
-                           WHERE user_id =%s
-                """,(user_id))
-            result = cursor.fetchall()
-    subjects = list({i[0] for i in result})
-    predicates = list({i[1] for i in result})
-    messages: list[Mapping[str, str]] = [
-        {"role": "system", "content": UNIFIED_EXTRACTION_PROMPT.format(subjects=subjects, predicates=predicates)},
-        {"role": "user", "content": f"Latest User Message: {query.content}"},
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT DISTINCT subject, predicate
+                FROM active_beliefs
+                WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+            rows = cursor.fetchall()
+
+    subjects = sorted({row[0] for row in rows if row[0]})
+    predicates = sorted({row[1] for row in rows if row[1]})
+
+    llm_messages: list[dict[str, str]] = [
+        {
+            "role": "system",
+            "content": UNIFIED_EXTRACTION_PROMPT.format(
+                subjects=subjects,
+                predicates=predicates,
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"Latest User Message:\n{latest_message.content}",
+        },
     ]
 
     structured = qwen_client.with_structured_output(UnifiedExtraction)
+
     try:
-        response = structured.invoke(messages)
+        response = structured.invoke(llm_messages)
     except Exception:
         response = None
+    print(response)
+    return {
+        "unified_extraction": response,
+    }
 
-    return {"unified_extraction": response}
+from langgraph.constants import Send
+from langgraph.graph import END
 
+def extraction_router(state: AgentState):
+    extraction = state.get("unified_extraction")
 
-def router_Ep(state:AgentState) -> AgentState:
-    exe = state["unified_extraction"]
-    if exe.get("episodic_markers"):
-        return "continue"
-    else:
-        return "__end__"
+    if extraction is None:
+        return END
 
-def router_Se(state:AgentState) -> AgentState:
-    exe = state["unified_extraction"]
-    if exe.get("semantic"):
-        return "continue"
-    else:
-        return "__end__"
+    sends = []
+
+    if getattr(extraction, "semantic", None):
+        sends.append(Send("semantic_stager", state))
+
+    if getattr(extraction, "episodic_markers", None):
+        sends.append(Send("episodic_stager", state))
+
+    if not sends:
+        return END
+
+    return sends
