@@ -1,0 +1,146 @@
+:root {
+  --color-ink: #0B0E13;
+  --color-ink-raised: #12161D;
+  --color-hairline: #232A33;
+  --color-parchment: #F4EFE3;
+  --color-text: #EDEFF2;
+  --color-text-muted: #8A93A0;
+  --color-signal: #6FFFC0;
+  --color-episodic: #8C7CF0;
+  --color-semantic: #E8A33D;
+  --color-procedural: #C9A227;
+  --color-danger: #D9694F;
+  --panel-shadow: 0 16px 50px rgba(2, 6, 12, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --panel-highlight: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
+  --panel-edge: rgba(255, 255, 255, 0.06);
+}
+
+:root {
+  color-scheme: dark;
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--color-ink);
+  color: var(--color-text);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--color-ink);
+  background-image:
+    radial-gradient(circle at top left, rgba(111, 255, 192, 0.06), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a,
+input,
+textarea,
+select,
+[role='button'],
+[tabindex] {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role='button']:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.055;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.rounded-panel,
+.rounded-pill,
+.rounded-gauge {
+  position: relative;
+  box-shadow: var(--panel-shadow);
+  border: 1px solid var(--panel-edge);
+  overflow: hidden;
+}
+
+.rounded-panel::before,
+.rounded-pill::before,
+.rounded-gauge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--panel-highlight);
+  opacity: 0.95;
+}
+
+.rounded-panel {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 100%);
+  box-shadow:
+    0 16px 48px rgba(1, 4, 10, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.rounded-pill {
+  box-shadow:
+    0 8px 24px rgba(1, 4, 10, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.rounded-gauge {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
