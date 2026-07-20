@@ -55,7 +55,8 @@ def run_request(message: str, *, request_context: RequestContext | None = None) 
         message_timestamp=datetime.now(timezone.utc),
         timestamp=datetime.now(timezone.utc),
     )
-    config = {"configurable": {"thread_id": "session_2"}}
+    thread_id = context.thread_id or context.conversation_id or uuid4()
+    config = {"configurable": {"thread_id": str(thread_id)}}
     state = {
         "requestcontext": context,
         "messages": [HumanMessage(content=message)],
