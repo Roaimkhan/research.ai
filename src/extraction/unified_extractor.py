@@ -1,6 +1,6 @@
 from src.clients.qwen_client import qwen_client
 from src.schemas import AgentState, UnifiedExtraction
-from src.persistence import pool
+from src.persistence import raw_pool
 from src.prompts import UNIFIED_EXTRACTION_PROMPT
 
 structured = qwen_client.with_structured_output(UnifiedExtraction)
@@ -18,7 +18,7 @@ def UnifiedExtractor(state:AgentState) -> AgentState:
 
     latest_message = messages[-1]
 
-    with pool.connection() as conn:
+    with raw_pool.connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute(
                 """

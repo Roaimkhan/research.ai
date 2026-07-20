@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 from src.config import config
-import psycopg
 from uuid import UUID
 
 from psycopg.rows import dict_row
-from src.logging.db import instrument_connection
+from src.logging.db import instrument_connection_pool
+from src.persistence.db_pool import raw_pool
 
 DB_URL = config.DB_URL
 
-_raw_conn = psycopg.connect(DB_URL)
-conn = instrument_connection(_raw_conn, "episodic_store")
+pool = instrument_connection_pool(raw_pool, "episodic_store")
 
 def initialize_db():
-    conn.execute("""
+    with pool.connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -82,7 +83,6 @@ def initialize_db():
     """)
     conn.commit()
     
-cursor = conn.cursor()
 
 """Episodic persistence helpers.
 
@@ -96,9 +96,6 @@ never commit or roll back.
 import uuid
 import json
 from typing import Dict
-
-from src.persistence.semantic_store import conn
-
 
 DEFAULT_TTL_HOURS = 720
 
@@ -417,40 +414,42 @@ def retrieve_episodic_candidates(
     user_id: UUID,
     min_importance: float = 0.0,
 ) -> list[dict]:
-    with conn.cursor(row_factory=dict_row) as cursor:
-        cursor.execute(
-            """
-            SELECT
-                gist_id,
-                session_id,
-                user_id,
-                recorded_at,
-                gist_text,
-                gist_embedding,
-                importance_score_current,
-                frequency_count,
-                metadata
-            FROM episodic_gists
-            WHERE user_id = %s
-              AND is_active = TRUE
-              AND erasure_tombstone = FALSE
-              AND gist_embedding IS NOT NULL
-              AND importance_score_current >= %s
-            ORDER BY recorded_at DESC
-            LIMIT 200
-            """,
-            (user_id, min_importance),
-        )
-        return cursor.fetchall()
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    gist_id,
+                    session_id,
+                    user_id,
+                    recorded_at,
+                    gist_text,
+                    gist_embedding,
+                    importance_score_current,
+                    frequency_count,
+                    metadata
+                FROM episodic_gists
+                WHERE user_id = %s
+                  AND is_active = TRUE
+                  AND erasure_tombstone = FALSE
+                  AND gist_embedding IS NOT NULL
+                  AND importance_score_current >= %s
+                ORDER BY recorded_at DESC
+                LIMIT 200
+                """,
+                (user_id, min_importance),
+            )
+            return cursor.fetchall()
 
 
 def get_stag_neighbors(
     gist_id: UUID,
     direction: str = "both",
 ) -> list[dict]:
-    with conn.cursor(row_factory=dict_row) as cursor:
-        if direction == "before":
-            cursor.execute(
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            if direction == "before":
+                cursor.execute(
                 """
                 SELECT
                     source_gist_id AS neighbor_gist_id,
@@ -514,9 +513,10 @@ def reactivate_gists(
     if not gist_ids:
         return
 
-    with conn.transaction():
-        with conn.cursor() as cursor:
-            cursor.execute(
+    with pool.connection() as conn:
+        with conn.transaction():
+            with conn.cursor() as cursor:
+                cursor.execute(
                 """
                 UPDATE episodic_gists
                 SET
@@ -532,8 +532,9 @@ def reactivate_gists(
 def get_session_summary(
     session_id: UUID,
 ) -> dict | None:
-    with conn.cursor(row_factory=dict_row) as cursor:
-        cursor.execute(
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
             """
             SELECT
                 session_summary,
@@ -557,8 +558,9 @@ def get_gist_texts_by_ids(
     if not gist_ids:
         return []
 
-    with conn.cursor(row_factory=dict_row) as cursor:
-        cursor.execute(
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
             """
             SELECT gist_id, gist_text
             FROM episodic_gists

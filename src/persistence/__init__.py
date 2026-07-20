@@ -1,5 +1,5 @@
 from .semantic_store import initialize_db as initialize_semantic_store
-from .semantic_staging_buffer import pool
+from .db_pool import raw_pool
 from .semantic_staging_buffer import initialize_db as initialize_staging_buffer
 
 

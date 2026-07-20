@@ -47,6 +47,7 @@ def run_request(message: str, *, request_context: RequestContext | None = None) 
     compiled_graph = build_graph()
     context = request_context or RequestContext(
         run_id=uuid4(),
+        workspace_id=uuid4(),
         user_id=roaim,
         thread_id=uuid4(),
         session_id=uuid4(),

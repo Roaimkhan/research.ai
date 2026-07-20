@@ -7,19 +7,21 @@ import psycopg
 from psycopg.rows import dict_row
 
 from src.config import config
-from src.logging.db import instrument_connection
+from src.logging.db import instrument_connection_pool
+from src.persistence.db_pool import raw_pool
 
 DB_URL = config.DB_URL
 
 DEDUP_SIMILARITY_THRESHOLD = 0.9
 RETRIEVAL_SIMILARITY_THRESHOLD = 0.75
 
-_raw_conn = psycopg.connect(DB_URL)
-conn = instrument_connection(_raw_conn, "procedural_store")
+pool = instrument_connection_pool(raw_pool, "procedural_store")
 
 
 def initialize_db() -> None:
-    conn.execute(
+    with pool.connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS procedural_skill_rejections (
             rejection_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -50,10 +52,7 @@ def initialize_db() -> None:
         );
         """
     )
-    conn.commit()
-
-
-cursor = conn.cursor()
+            conn.commit()
 
 
 def log_skill_rejection(
@@ -67,8 +66,9 @@ def log_skill_rejection(
     """
     Persist a rejected procedural skill for auditing and future analysis.
     """
-    with conn.cursor(row_factory=dict_row) as cursor:
-        cursor.execute(
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
             """
             INSERT INTO procedural_skill_rejections (
                 user_id,
@@ -90,7 +90,7 @@ def log_skill_rejection(
                 datetime.utcnow(),
             ),
         )
-        conn.commit()
+            conn.commit()
 
 
 def find_similar_skill(
@@ -98,19 +98,20 @@ def find_similar_skill(
     user_id: UUID,
 ) -> UUID | None:
     """Find the nearest active skill for the user using pgvector similarity."""
-    with conn.cursor(row_factory=dict_row) as cursor:
-        cursor.execute(
-            """
-            SELECT skill_id, trigger_embedding <=> %s AS distance
-            FROM procedural_skills
-            WHERE user_id = %s
-              AND is_active = TRUE
-            ORDER BY trigger_embedding <=> %s
-            LIMIT 1
-            """,
-            (trigger_embedding, user_id, trigger_embedding),
-        )
-        row = cursor.fetchone()
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
+                """
+                SELECT skill_id, trigger_embedding <=> %s AS distance
+                FROM procedural_skills
+                WHERE user_id = %s
+                  AND is_active = TRUE
+                ORDER BY trigger_embedding <=> %s
+                LIMIT 1
+                """,
+                (trigger_embedding, user_id, trigger_embedding),
+            )
+            row = cursor.fetchone()
 
     if row is None:
         return None
@@ -126,16 +127,17 @@ def append_source_task(
     task_id: str,
 ) -> None:
     """Append a task identifier to the source_task_ids array for a skill."""
-    with conn.cursor() as cursor:
-        cursor.execute(
-            """
-            UPDATE procedural_skills
-            SET source_task_ids = array_append(source_task_ids, %s)
-            WHERE skill_id = %s;
-            """,
-            (task_id, skill_id),
-        )
-        conn.commit()
+    with pool.connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE procedural_skills
+                SET source_task_ids = array_append(source_task_ids, %s)
+                WHERE skill_id = %s;
+                """,
+                (task_id, skill_id),
+            )
+            conn.commit()
 
 
 def retrieve_matching_skills(
@@ -144,29 +146,30 @@ def retrieve_matching_skills(
     top_k: int = 3,
 ) -> list[dict]:
     """Retrieve active procedural skills for a user and rank them by similarity and success rate."""
-    with conn.cursor(row_factory=dict_row) as cursor:
-        cursor.execute(
-            """
-            SELECT
-                skill_id,
-                skill_name,
-                file_path,
-                success_count,
-                failure_count,
-                trigger_embedding <=> %(task_embedding)s AS distance
-            FROM procedural_skills
-            WHERE user_id = %(user_id)s
-              AND is_active = TRUE
-            ORDER BY trigger_embedding <=> %(task_embedding)s
-            LIMIT %(top_k)s;
-            """,
-            {
-                "user_id": user_id,
-                "task_embedding": task_embedding,
-                "top_k": top_k,
-            },
-        )
-        rows = cursor.fetchall()
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    skill_id,
+                    skill_name,
+                    file_path,
+                    success_count,
+                    failure_count,
+                    trigger_embedding <=> %(task_embedding)s AS distance
+                FROM procedural_skills
+                WHERE user_id = %(user_id)s
+                  AND is_active = TRUE
+                ORDER BY trigger_embedding <=> %(task_embedding)s
+                LIMIT %(top_k)s;
+                """,
+                {
+                    "user_id": user_id,
+                    "task_embedding": task_embedding,
+                    "top_k": top_k,
+                },
+            )
+            rows = cursor.fetchall()
 
     ranked_rows: list[dict] = []
     for row in rows:
@@ -207,10 +210,11 @@ def write_skill(
     validation_confidence: float,
 ) -> None:
     """Persist a new procedural skill row using the supplied skill_id."""
-    with conn.cursor() as cursor:
-        cursor.execute(
-            """
-            INSERT INTO procedural_skills (
+    with pool.connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO procedural_skills (
                 skill_id,
                 user_id,
                 workspace_id,

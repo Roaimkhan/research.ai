@@ -6,7 +6,7 @@ from typing import List
 
 from src.consolidation.episodic_consolidation.state import ConsolidationState
 from src.persistence import episodic_store
-from src.persistence.semantic_store import conn
+from src.persistence.semantic_store import pool
 
 
 SIMILARITY_THRESHOLD = 0.80

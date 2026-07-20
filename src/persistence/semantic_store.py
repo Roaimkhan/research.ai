@@ -1,19 +1,18 @@
 from datetime import datetime
 from uuid import UUID
 
-import psycopg
 from psycopg.rows import dict_row
 
-from src.config import config
-from src.logging.db import instrument_connection
+from src.logging.db import instrument_connection_pool
+from src.persistence.db_pool import raw_pool
 
-DB_URL = config.DB_URL
+pool = instrument_connection_pool(raw_pool, "semantic_store")
 
-_raw_conn = psycopg.connect(DB_URL)
-conn = instrument_connection(_raw_conn, "semantic_store")
 
 def initialize_db():
-    conn.execute("""
+    with pool.connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
         CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
         CREATE EXTENSION IF NOT EXISTS vector;
                  
@@ -115,9 +114,7 @@ def initialize_db():
             reason TEXT NOT NULL
         );
     """)
-    conn.commit()
-    
-cursor = conn.cursor()
+            conn.commit()
 
 
 def retrieve_semantic_candidates(
@@ -128,59 +125,60 @@ def retrieve_semantic_candidates(
     candidates: list[dict] = []
     pool_size = 30
 
-    with conn.cursor(row_factory=dict_row) as cursor:
-        cursor.execute(
-            """
-            SELECT
-                fact_id,
-                subject,
-                predicate,
-                object,
-                valid_start,
-                valid_end,
-                transaction_start,
-                confidence_score,
-                fact_embedding,
-                FALSE AS provisional
-            FROM active_beliefs
-            WHERE user_id = %(user_id)s
-              AND valid_start <= %(as_of)s
-              AND (valid_end IS NULL OR valid_end > %(as_of)s)
-              AND transaction_end IS NULL
-            ORDER BY fact_embedding <=> %(query_embedding)s
-            LIMIT %(pool_size)s
-            """,
-            {
-                "user_id": user_id,
-                "as_of": as_of,
-                "query_embedding": query_embedding,
-                "pool_size": pool_size,
-            },
-        )
-        candidates.extend(cursor.fetchall())
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    fact_id,
+                    subject,
+                    predicate,
+                    object,
+                    valid_start,
+                    valid_end,
+                    transaction_start,
+                    confidence_score,
+                    fact_embedding,
+                    FALSE AS provisional
+                FROM active_beliefs
+                WHERE user_id = %(user_id)s
+                  AND valid_start <= %(as_of)s
+                  AND (valid_end IS NULL OR valid_end > %(as_of)s)
+                  AND transaction_end IS NULL
+                ORDER BY fact_embedding <=> %(query_embedding)s
+                LIMIT %(pool_size)s
+                """,
+                {
+                    "user_id": user_id,
+                    "as_of": as_of,
+                    "query_embedding": query_embedding,
+                    "pool_size": pool_size,
+                },
+            )
+            candidates.extend(cursor.fetchall())
 
-        cursor.execute(
-            """
-            SELECT
-                staging_id AS fact_id,
-                subject,
-                predicate,
-                object,
-                valid_start,
-                valid_end,
-                extracted_at AS transaction_start,
-                confidence_score,
-                NULL AS fact_embedding,
-                TRUE AS provisional
-            FROM staging_buffer
-            WHERE user_id = %s
-              AND consolidated = FALSE
-              AND valid_start <= %s
-              AND (valid_end IS NULL OR valid_end > %s)
-            """,
-            (user_id, as_of, as_of),
-        )
-        candidates.extend(cursor.fetchall())
+            cursor.execute(
+                """
+                SELECT
+                    staging_id AS fact_id,
+                    subject,
+                    predicate,
+                    object,
+                    valid_start,
+                    valid_end,
+                    extracted_at AS transaction_start,
+                    confidence_score,
+                    NULL AS fact_embedding,
+                    TRUE AS provisional
+                FROM staging_buffer
+                WHERE user_id = %s
+                  AND consolidated = FALSE
+                  AND valid_start <= %s
+                  AND (valid_end IS NULL OR valid_end > %s)
+                """,
+                (user_id, as_of, as_of),
+            )
+            candidates.extend(cursor.fetchall())
 
     return candidates
 
@@ -193,16 +191,17 @@ def get_serg_proximity(
 
 
 def get_active_baca_weights() -> dict:
-    with conn.cursor(row_factory=dict_row) as cursor:
-        cursor.execute(
-            """
-            SELECT w_sem, w_key, w_graph, w_epi, lambda_decay, w_imp, w_sim
-            FROM retrieval_config
-            ORDER BY updated_at DESC
-            LIMIT 1
-            """
-        )
-        row = cursor.fetchone()
+    with pool.connection() as conn:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            cursor.execute(
+                """
+                SELECT w_sem, w_key, w_graph, w_epi, lambda_decay, w_imp, w_sim
+                FROM retrieval_config
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """
+            )
+            row = cursor.fetchone()
 
     if row is None:
         raise ValueError("retrieval_config is missing; run the schema migration first")
@@ -215,21 +214,22 @@ def check_if_superseded(
     predicate: str,
     as_of_valid_start: datetime,
 ) -> bool:
-    with conn.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT EXISTS(
-                SELECT 1
-                FROM active_beliefs
-                WHERE subject = %s
-                  AND predicate = %s
-                  AND transaction_end IS NULL
-                  AND valid_start > %s
+    with pool.connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT EXISTS(
+                    SELECT 1
+                    FROM active_beliefs
+                    WHERE subject = %s
+                      AND predicate = %s
+                      AND transaction_end IS NULL
+                      AND valid_start > %s
+                )
+                """,
+                (subject, predicate, as_of_valid_start),
             )
-            """,
-            (subject, predicate, as_of_valid_start),
-        )
-        row = cursor.fetchone()
+            row = cursor.fetchone()
 
     return bool(row[0]) if row else False
 

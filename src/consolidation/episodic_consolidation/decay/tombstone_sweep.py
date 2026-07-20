@@ -1,6 +1,6 @@
 from src.logging import get_logger, record_memory_event
 
-from src.persistence.semantic_store import conn
+from src.persistence.semantic_store import pool
 
 
 logger = get_logger(__name__)
@@ -8,7 +8,7 @@ logger = get_logger(__name__)
 
 def run_tombstone_sweep() -> None:
     try:
-        with conn.transaction():
+        with pool.connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
 UPDATE episodic_gists
