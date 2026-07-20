@@ -5,6 +5,7 @@ import json
 import inspect
 from typing import Any, Awaitable, Callable, Mapping
 
+from src.atsc.trace_hook import trace_logger_hook
 from src.telemetry import track_call
 
 
@@ -23,11 +24,12 @@ class ToolExecutor:
 	async def execute(self, tool_call: Any) -> dict[str, Any]:
 		tool_name = self._get_tool_name(tool_call)
 		tool_call_id = getattr(tool_call, "id", None)
+		state = {}
 
 		try:
 			args = json.loads(self._get_tool_arguments(tool_call))
 		except json.JSONDecodeError as error:
-			return self._tool_response(
+			response = self._tool_response(
 				tool_call_id,
 				{
 					"ok": False,
@@ -39,9 +41,11 @@ class ToolExecutor:
 					},
 				},
 			)
+			trace_logger_hook(state, tool_name, {}, response, False)
+			return response
 
 		if not isinstance(args, dict):
-			return self._tool_response(
+			response = self._tool_response(
 				tool_call_id,
 				{
 					"ok": False,
@@ -52,10 +56,12 @@ class ToolExecutor:
 					},
 				},
 			)
+			trace_logger_hook(state, tool_name, {}, response, False)
+			return response
 
 		tool = self.tool_registry.get(tool_name)
 		if tool is None:
-			return self._tool_response(
+			response = self._tool_response(
 				tool_call_id,
 				{
 					"ok": False,
@@ -66,12 +72,14 @@ class ToolExecutor:
 					},
 				},
 			)
+			trace_logger_hook(state, tool_name, args, response, False)
+			return response
 
 		if self._risk_levels.get(tool_name) == "high":
 			try:
 				allowed = await self._maybe_await(self.confirm_high_risk(tool_name, args))
 			except Exception as error:
-				return self._tool_response(
+				response = self._tool_response(
 					tool_call_id,
 					{
 						"ok": False,
@@ -83,8 +91,10 @@ class ToolExecutor:
 						},
 					},
 				)
+				trace_logger_hook(state, tool_name, args, response, False)
+				return response
 			if not allowed:
-				return self._tool_response(
+				response = self._tool_response(
 					tool_call_id,
 					{
 						"ok": False,
@@ -95,6 +105,8 @@ class ToolExecutor:
 						},
 					},
 				)
+				trace_logger_hook(state, tool_name, args, response, False)
+				return response
 
 		try:
 			if asyncio.iscoroutinefunction(tool):
@@ -102,7 +114,7 @@ class ToolExecutor:
 			else:
 				result = await asyncio.to_thread(tool, **args)
 		except Exception as error:
-			return self._tool_response(
+			response = self._tool_response(
 				tool_call_id,
 				{
 					"ok": False,
@@ -114,8 +126,12 @@ class ToolExecutor:
 					},
 				},
 			)
+			trace_logger_hook(state, tool_name, args, response, False)
+			return response
 
-		return self._tool_response(tool_call_id, result)
+		response = self._tool_response(tool_call_id, result)
+		trace_logger_hook(state, tool_name, args, response, True)
+		return response
 
 	async def execute_all(self, tool_calls: list[Any]) -> list[dict[str, Any]]:
 		return await asyncio.gather(*(self.execute(tool_call) for tool_call in tool_calls))

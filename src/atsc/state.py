@@ -6,6 +6,7 @@ class ProceduralConsolidationState(TypedDict):
     raw_events: list[tuple[str, MemoryEvent]]   # (redis_entry_id, event)
     grouped_by_task: dict[str, list[tuple[str, MemoryEvent]]]
     skipped_task_ids: list[str]
+    trace_text_by_task: dict[str, str]
     synthesized_drafts: list[dict]                # {"task_id":..., "extraction": ExtractionResult}
     validated_skills: list[dict]
     rejected_skills: list[dict]

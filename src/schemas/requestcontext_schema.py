@@ -11,3 +11,5 @@ class RequestContext(BaseModel):
     message_id: UUID
     message_timestamp: datetime
     timestamp: datetime
+    workspace_id: UUID | None
+

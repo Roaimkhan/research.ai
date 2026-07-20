@@ -10,3 +10,4 @@ class AgentState(TypedDict, total=False):
     messages: Annotated[list[BaseMessage], add_messages]
     unified_extraction: UnifiedExtraction
     retrieved_context: list[dict]
+    retrieved_procedural_skills: list[str]

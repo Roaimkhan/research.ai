@@ -15,6 +15,7 @@ from src.logging import configure_logging, get_logger
 from src.main_graph.nodes.main_llm import main_llm_node
 from src.main_graph.nodes.memory_dispatcher import memory_dispatcher_node
 from src.main_graph.nodes.retreival_adapter import retrieval_adapter
+from src.atsc.nodes.procedural_retrieval import procedural_retrieval_node
 from src.logging.decorators import log_graph, log_node
 from src.persistence import initialize_db
 from src.schemas.agent import AgentState
@@ -27,11 +28,13 @@ def build_graph():
     graph.add_node("unifiedextractor", log_node(UnifiedExtractor, node_name="unifiedextractor"))
     graph.add_node("memory_dispatcher", log_node(memory_dispatcher_node, node_name="memory_dispatcher"))
     graph.add_node("retrieval", log_node(retrieval_adapter, node_name="retrieval"))
+    graph.add_node("procedural_retrieval", log_node(procedural_retrieval_node, node_name="procedural_retrieval"))
     graph.add_node("main_llm", log_node(main_llm_node, node_name="main_llm"))
     graph.add_edge(START, "unifiedextractor")
     graph.add_edge("unifiedextractor", "memory_dispatcher")
     graph.add_edge("memory_dispatcher", "retrieval")
-    graph.add_edge("retrieval", "main_llm")
+    graph.add_edge("retrieval", "procedural_retrieval")
+    graph.add_edge("procedural_retrieval", "main_llm")
     graph.add_edge("main_llm", END)
     checkpointer = get_postgres_checkpointer()
     return log_graph(graph.compile(checkpointer = checkpointer), graph_name="Main Graph")
