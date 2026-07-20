@@ -4,6 +4,7 @@ from src.utils import embed_text
 
 
 def semantic_buffer_writer(state: SemanticMemoryStagerState) -> dict:
+    print("semantic_buffer_Executed")
     snapshot = state.get("snapshot")
     if not snapshot:
         raise ValueError("SemanticMemoryStagerState missing required 'snapshot' field.")

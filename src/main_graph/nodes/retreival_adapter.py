@@ -25,7 +25,8 @@ def retrieval_adapter(state: AgentState) -> AgentState:
     
 
     result = retrieval_graph.invoke(retrieval_state)
-    state["retrieved_context"] = result.get("validated_context", [])
+    return {
+        "retrieved_context":result.get("validated_context", [])
+    }
 
 
-    return state

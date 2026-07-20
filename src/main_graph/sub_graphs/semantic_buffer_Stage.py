@@ -12,6 +12,7 @@ def router_after_semantic_ex(state: SemanticMemoryStagerState) -> str:
 
 
 graph = StateGraph(SemanticMemoryStagerState)
+
 graph.add_node("TER", temporal_expression_resolver)
 graph.add_node("semantic_buffer_writer", semantic_buffer_writer)
 

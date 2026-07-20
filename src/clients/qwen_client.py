@@ -158,24 +158,36 @@ class QwenClient:
     @track_call("qwen.call_qwen_structured")
     def call_qwen_structured(self, messages: Sequence[Any], tool_schema: dict[str, Any]) -> dict[str, Any]:
         function_schema = tool_schema.get("function") or {}
-        function_name = function_schema.get("name")
-        if not function_name:
-            raise ValueError("tool_schema must include function.name for structured Qwen calls.")
+        
+        # Strip out the parameters schema to build a clear system prompt instruction
+        schema_text = json.dumps(function_schema.get("parameters", {}), ensure_ascii=False, separators=(',', ':'))
+        
+        # Inject the schema into the system prompt guidelines natively
+        json_mode_messages = [
+            {
+                'role': 'system',
+                'content': (
+                    f"You must return ONLY a JSON object matching this schema: {schema_text}. "
+                    "Do not wrap the response in markdown blocks like ```json."
+                ),
+            },
+            *self._normalize_messages(messages),
+        ]
 
-        forced_tool_choice = {"type": "function", "function": {"name": function_name}}
-
-        try:
-            response = self._call(
-                messages=messages,
-                tools=[tool_schema],
-                tool_choice=forced_tool_choice,
-                model=self.settings.QWEN_MODEL,
-                temperature=0.3,
-                max_tokens=1024,
-            )
-            return self._parse_forced_tool_response(response, function_name)
-        except BadRequestError:
-            return self._call_structured_json_fallback(messages=messages, tool_schema=tool_schema)
+        # Use native response_format json_object rather than broken tool choices
+        response = self._create_completion(
+            model=self.settings.QWEN_MODEL,
+            messages=json_mode_messages,
+            temperature=0.3,
+            max_tokens=1024,
+            response_format={"type": "json_object"}  # Forces Qwen to reply with pure JSON
+        )
+        
+        # Parse and return directly
+        content = response.choices[0].message.content
+        if not content:
+            raise ValueError('Qwen returned an empty response.')
+        return json.loads(content)
 
     def _call(
         self,
@@ -342,10 +354,12 @@ class QwenClient:
             raise TypeError(f'Unsupported message type: {type(message)!r}')
 
         normalized: dict[str, Any] = {'role': role, 'content': content}
+        #  FIXED CODE: Blocks empty lists or empty values from polluting the payload
         for key in ('name', 'tool_call_id', 'tool_calls', 'function_call'):
             if hasattr(message, key):
                 value = getattr(message, key)
-                if value is not None:
+                # Ensure value is not None AND not an empty list/string
+                if value is not None and value != [] and value != "":
                     normalized[key] = value
 
         for key in ('tool_calls', 'function_call'):

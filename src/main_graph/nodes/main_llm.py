@@ -21,9 +21,9 @@ def main_llm_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     # 2. Call Qwen directly using your custom client method
     response = qwen_client.call_qwen(messages=messages)
-    
     # 3. Extract the raw string text using the native SDK path
     ai_text = response.choices[0].message.content
+    print(f"AI: {ai_text}")
     logger.info("LLM response generated", extra={"response_length": len(ai_text)})
 
     # 4. Append the response message back to the graph's message history

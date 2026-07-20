@@ -3,6 +3,7 @@ from src.schemas import AgentState, UnifiedExtraction
 from src.persistence import pool
 from src.prompts import UNIFIED_EXTRACTION_PROMPT
 
+structured = qwen_client.with_structured_output(UnifiedExtraction)
 
 def UnifiedExtractor(state:AgentState) -> AgentState:
     context = state.get("requestcontext")
@@ -46,7 +47,6 @@ def UnifiedExtractor(state:AgentState) -> AgentState:
         },
     ]
 
-    structured = qwen_client.with_structured_output(UnifiedExtraction)
 
     try:
         response = structured.invoke(llm_messages)

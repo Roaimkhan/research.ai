@@ -34,16 +34,17 @@ def build_graph():
     graph.add_edge("retrieval", "main_llm")
     graph.add_edge("main_llm", END)
     checkpointer = get_postgres_checkpointer()
-    return log_graph(graph.compile(), checkpointer = checkpointer, graph_name="Main Graph")
+    return log_graph(graph.compile(checkpointer = checkpointer), graph_name="Main Graph")
 
-
+roaim = "aaa44f24-d3f7-4f95-846d-5187dfe0366d"
+ahmed = "99abb5a7-ac89-40a5-bae1-4b071d71cbd9"
 def run_request(message: str, *, request_context: RequestContext | None = None) -> dict:
     configure_logging()
     initialize_db()
     compiled_graph = build_graph()
     context = request_context or RequestContext(
         run_id=uuid4(),
-        user_id=uuid4(),
+        user_id=roaim,
         thread_id=uuid4(),
         session_id=uuid4(),
         conversation_id=uuid4(),
@@ -51,17 +52,20 @@ def run_request(message: str, *, request_context: RequestContext | None = None) 
         message_timestamp=datetime.now(timezone.utc),
         timestamp=datetime.now(timezone.utc),
     )
+    config = {"configurable": {"thread_id": "session_2"}}
     state = {
         "requestcontext": context,
         "messages": [HumanMessage(content=message)],
     }
     logger.info("Dispatching main request", extra={"run_id": str(context.run_id) if context.run_id else None})
-    return compiled_graph.invoke(state)
+    return compiled_graph.invoke(state,config=config)
 
 
 def main() -> None:
     query = input("AI : hi there how can i help you?")
-    run_request(query)
+    while query != "exit":
+        run_request(query)
+        query = input("Enter : ")
 
 
 if __name__ == "__main__":

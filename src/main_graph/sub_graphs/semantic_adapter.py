@@ -25,6 +25,4 @@ def semantic_adapter(state: AgentState) -> AgentState:
         "extraction_result": state["unified_extraction"].semantic,
     }
 
-    semantic_memory_stager_graph.invoke(semantic_state)
-
     return state
